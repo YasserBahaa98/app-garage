@@ -120,6 +120,13 @@
     background: color-mix(in srgb, var(--paint) 28%, var(--card)); border: 1px solid var(--paint);
     border-radius: 16px; padding: 12px 14px; margin-bottom: 14px; font-size: 15px; }
   .nudge .btn { min-height: 40px; padding: 0 16px; }
+  .syncbox { margin: 0 0 14px; padding-bottom: 14px; border-bottom: 2px dashed var(--line); }
+  .syncbox .when { margin: 0 0 10px; }
+  .syncbox details { margin-top: 12px; }
+  .syncbox summary { cursor: pointer; font-weight: 600; min-height: 32px; }
+  .syncbox ol { margin: 8px 0 12px; padding-left: 22px; color: var(--muted); }
+  .syncbox li { margin: 4px 0; }
+  .syncbox a { color: var(--steel); font-weight: 600; }
   .backup .when { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
   .backup { margin-top: 28px; padding: 16px; border-radius: 16px; border: 2px dashed var(--line); font-size: 15px; }
   .backup h3 { margin: 0 0 4px; font-size: 17px; font-weight: 700; }
@@ -167,8 +174,31 @@
   </section>
 
   <div class="backup">
-    <h3>Your notes live on this phone</h3>
-    <p>Ideas and to-dos aren't stored anywhere else. Back them up now and then, and keep the file in Files, Drive or email.</p>
+    <h3>Your notes</h3>
+    <p>Ideas and to-dos are saved on this device. Turn on sync to share them between your devices, or back them up to a file now and then.</p>
+    <div class="syncbox">
+      <p class="when" id="sync-status"></p>
+      <div class="row">
+        <button class="btn quiet" id="sync-now" type="button" hidden>Sync now</button>
+        <button class="btn quiet" id="sync-off" type="button" hidden>Disconnect this device</button>
+      </div>
+      <details id="sync-setup">
+        <summary>Turn on sync</summary>
+        <p><b>Synced notes are saved in a public file on GitHub that anyone can read.</b> Don't put anything private in them.</p>
+        <ol>
+          <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">GitHub's new token page</a> and sign in.</li>
+          <li>Name it <b>App Garage notes</b> and choose how long it lasts.</li>
+          <li>Under <b>Repository access</b>, choose <b>Only select repositories</b> and pick <b>app-garage</b>.</li>
+          <li>Under <b>Permissions</b>, then <b>Repository permissions</b>, set <b>Contents</b> to <b>Read and write</b>.</li>
+          <li>Tap <b>Generate token</b>, copy it, and paste it below. Do this on each device.</li>
+        </ol>
+        <form class="add" id="sync-form">
+          <input id="token-input" type="password" placeholder="Paste your token" aria-label="GitHub token" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <button class="btn" type="submit">Connect</button>
+        </form>
+        <p class="when">The token stays in this browser and is only sent to GitHub. Anyone who gets into this browser could use it to change this repo, so pick a short expiry.</p>
+      </details>
+    </div>
     <p class="when" id="when"></p>
     <div class="row">
       <button class="btn quiet" id="backup">Back up notes</button>
@@ -206,11 +236,13 @@
     if (!save(NOTES_KEY, notes)) showBackupMsg("Couldn't save on this phone. Turn off private browsing and try again.");
     updateSummary();
     updateNudge();
+    scheduleSync();
   }
   function markBackedUp() { save(BACKUP_KEY, Date.now()); updateNudge(); }
   function daysAgo(ts) { return Math.floor((Date.now() - ts) / 86400000); }
   function noteCount() {
-    return notes.ideas.length + Object.values(notes.todos).reduce((n, l) => n + l.length, 0);
+    const live = l => (l || []).filter(i => !i.del).length;
+    return live(notes.ideas) + Object.values(notes.todos).reduce((n, l) => n + live(l), 0);
   }
   function updateNudge() {
     const lastBackup = load(BACKUP_KEY, 0), lastChange = load(CHANGE_KEY, 0);
@@ -285,9 +317,10 @@
     return n;
   }
   function newItem(text) {
-    return { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text, done: false, at: new Date().toISOString() };
+    return { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text, done: false, at: new Date().toISOString(), u: Date.now() };
   }
-  function openCount(list) { return (list || []).filter(t => !t.done).length; }
+  // Deleted notes stay in the list as empty "tombstones" so that sync can tell "deleted" from "never had it".
+  function openCount(list) { return (list || []).filter(t => !t.del && !t.done).length; }
 
   // App icon: try the app's own icon files; if none load, show its first letter.
   function iconFor(app) {
@@ -308,18 +341,20 @@
   // A list of notes with a checkbox and a delete button. `getList` returns the live array.
   function renderItems(ul, getList, onChange, emptyText, freshId) {
     ul.innerHTML = "";
-    const list = getList();
+    const list = getList().filter(i => !i.del);
     if (!list.length) { ul.append(el("li", { className: "empty", textContent: emptyText })); return; }
     const sorted = [...list].sort((a, b) => (a.done - b.done) || (b.at > a.at ? 1 : -1));
     sorted.forEach(item => {
       const cb = el("input", { type: "checkbox", checked: item.done });
       cb.setAttribute("aria-label", "Done: " + item.text);
-      cb.addEventListener("change", () => { item.done = cb.checked; saveNotes(); onChange(); });
+      cb.addEventListener("change", () => { item.done = cb.checked; item.u = Date.now(); saveNotes(); onChange(); });
       const del = el("button", { className: "del", textContent: "×", title: "Delete" });
       del.setAttribute("aria-label", "Delete: " + item.text);
       del.addEventListener("click", () => {
         if (!confirm("Delete this note?\n\n" + item.text)) return;
-        const arr = getList(); arr.splice(arr.indexOf(item), 1); saveNotes(); onChange();
+        // Keep an empty marker (no text) so other devices learn it was deleted.
+        item.del = true; item.text = ""; item.u = Date.now();
+        saveNotes(); onChange();
       });
       const li = el("li", { className: (item.done ? "done" : "") + (item.id === freshId ? " fresh" : "") },
         cb, el("span", { className: "txt", textContent: item.text }), del);
@@ -419,6 +454,7 @@
       document.getElementById("summary").textContent = "Couldn't load your apps. Check the internet connection, then reopen.";
       return;
     }
+    lastApps = all; lastProblems = txt.problems;
     renderApps(all, txt.problems);
   }
 
@@ -479,9 +515,12 @@
   function applyBackup(data, sourceName) {
     const n = data && (data.notes || data);
     if (!n || !Array.isArray(n.ideas) || !n.todos || typeof n.todos !== "object") throw new Error("not a backup");
-    const count = n.ideas.length + Object.values(n.todos).reduce((s, l) => s + (Array.isArray(l) ? l.length : 0), 0);
-    if (!confirm("Replace the ideas and to-dos on this phone with the ones in this backup (" + count + " notes)?")) return false;
+    const live = l => (Array.isArray(l) ? l : []).filter(i => !i.del).length;
+    const count = live(n.ideas) + Object.values(n.todos).reduce((s, l) => s + live(l), 0);
+    if (!confirm("Replace the ideas and to-dos on this device with the ones in this backup (" + count + " notes)?" +
+        (token() ? "\n\nSync is on, so your other devices will get this version too." : ""))) return false;
     notes = { ideas: n.ideas, todos: n.todos };
+    save(FORCE_KEY, true); // the next sync makes the repo match this backup instead of merging
     saveNotes(); markBackedUp(); renderIdeas(); loadApps();
     showBackupMsg("Restored from " + sourceName + ".");
     return true;
@@ -493,10 +532,172 @@
     catch { showBackupMsg("That file isn't an App Garage backup. Pick a file named app-garage-backup-….json."); }
   });
 
+  // ---------- sync through the repo (optional) ----------
+  // Notes live in notes.json on the "notes" branch of this repo, so saving never rebuilds the page.
+  // Each device keeps its own copy and merges with the repo's copy: the most recently changed version of each note wins.
+  const SYNC = { repo: GH_USER + "/" + SELF_REPO, branch: "notes", file: "notes.json" };
+  const TOKEN_KEY = "app-garage-token", META_KEY = "app-garage-sync", FORCE_KEY = "app-garage-force";
+  const TOMBSTONE_DAYS = 30;
+  let syncing = false, syncAgain = false, syncTimer = null, lastApps = null, lastProblems = [];
+
+  function token() { return load(TOKEN_KEY, ""); }
+  function stamp(i) { return i.u || Date.parse(i.at) || 0; }
+  function mergeLists(a, b) {
+    const m = new Map();
+    [...(a || []), ...(b || [])].forEach(i => {
+      if (!i || !i.id) return;
+      const o = m.get(i.id);
+      if (!o || stamp(i) > stamp(o)) m.set(i.id, i);
+    });
+    return [...m.values()];
+  }
+  function mergeNotes(a, b) {
+    const todos = {};
+    new Set([...Object.keys(a.todos || {}), ...Object.keys(b.todos || {})])
+      .forEach(k => { todos[k] = mergeLists(a.todos && a.todos[k], b.todos && b.todos[k]); });
+    return { ideas: mergeLists(a.ideas, b.ideas), todos };
+  }
+  // Drop delete-markers older than 30 days, and empty lists.
+  function tidy(n) {
+    const cut = Date.now() - TOMBSTONE_DAYS * 86400000;
+    const keep = l => (l || []).filter(i => !(i.del && stamp(i) < cut));
+    const todos = {};
+    Object.entries(n.todos || {}).forEach(([k, l]) => { const kept = keep(l); if (kept.length) todos[k] = kept; });
+    return { ideas: keep(n.ideas), todos };
+  }
+  // Restoring a backup: the repo should end up matching it, so mark anything only the repo has as deleted.
+  function authoritative(local, remote) {
+    const now = Date.now(), out = { ideas: [...local.ideas], todos: {} };
+    Object.entries(local.todos).forEach(([k, l]) => { out.todos[k] = [...l]; });
+    const mark = (have, theirs) => (theirs || []).forEach(i => {
+      if (!i.del && !have.some(h => h.id === i.id)) have.push({ id: i.id, text: "", done: false, at: i.at, del: true, u: now });
+    });
+    mark(out.ideas, remote.ideas);
+    Object.entries(remote.todos || {}).forEach(([k, l]) => { out.todos[k] = out.todos[k] || []; mark(out.todos[k], l); });
+    return out;
+  }
+  function toFile(n) {
+    const todos = {};
+    Object.entries(n.todos || {}).forEach(([k, l]) => { if (l.length) todos[k] = l; });
+    return JSON.stringify({ version: 1, ideas: n.ideas || [], todos }, null, 1);
+  }
+  const b64enc = s => { let bin = ""; new TextEncoder().encode(s).forEach(b => { bin += String.fromCharCode(b); }); return btoa(bin); };
+  const b64dec = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g, "")), c => c.charCodeAt(0)));
+  function httpError(status) { const e = new Error("http " + status); e.status = status; return e; }
+
+  function api(method, body) {
+    const url = `https://api.github.com/repos/${SYNC.repo}/contents/${SYNC.file}` + (method === "GET" ? `?ref=${SYNC.branch}` : "");
+    return fetch(url, {
+      method, cache: "no-store",
+      headers: Object.assign({ Accept: "application/vnd.github+json", Authorization: "Bearer " + token() },
+                             body ? { "Content-Type": "application/json" } : {}),
+      body: body ? JSON.stringify(body) : undefined
+    });
+  }
+  async function pull() {
+    const r = await api("GET");
+    if (r.status === 404) return { notes: { ideas: [], todos: {} }, sha: null };
+    if (!r.ok) throw httpError(r.status);
+    const j = await r.json();
+    const d = JSON.parse(b64dec(j.content));
+    return { notes: { ideas: Array.isArray(d.ideas) ? d.ideas : [], todos: d.todos && typeof d.todos === "object" ? d.todos : {} }, sha: j.sha };
+  }
+
+  function rerender() { renderIdeas(); if (lastApps) renderApps(lastApps, lastProblems); updateSummary(); updateNudge(); }
+  function ago(ts) {
+    const s = Math.round((Date.now() - ts) / 1000);
+    return s < 60 ? "just now" : s < 3600 ? Math.round(s / 60) + " min ago" : s < 86400 ? Math.round(s / 3600) + " h ago" : Math.round(s / 86400) + " days ago";
+  }
+  function setSyncStatus(text, isError) {
+    const on = !!token();
+    document.getElementById("sync-now").hidden = !on;
+    document.getElementById("sync-off").hidden = !on;
+    document.getElementById("sync-form").hidden = on;
+    document.getElementById("sync-setup").querySelector("summary").textContent = on ? "Sync settings" : "Turn on sync";
+    const s = document.getElementById("sync-status");
+    const meta = load(META_KEY, null);
+    s.textContent = text || (on
+      ? "Sync is on" + (meta && meta.at ? ". Last synced " + ago(meta.at) + "." : ".")
+      : "Sync is off. Your notes are saved on this device only.");
+    s.style.color = isError ? "var(--warn)" : "";
+  }
+  function explain(e) {
+    if (e instanceof TypeError) return "Offline. Your notes are safe here and will sync when you're back online.";
+    if (e.status === 401) return "GitHub rejected the token. It may have expired. Make a new one and connect again.";
+    if (e.status === 403 || e.status === 404) return "GitHub wouldn't let this token save. Check it has Contents set to Read and write for app-garage.";
+    if (e.status === 409 || e.status === 422) return "Couldn't save because another device saved at the same time. It will try again.";
+    return "Couldn't sync (" + (e.status || e.message) + "). Your notes are safe here. Try Sync now.";
+  }
+
+  // Returns { ok, status }. Safe to call often; overlapping calls are queued.
+  async function sync() {
+    if (!token()) { setSyncStatus(); return { ok: false }; }
+    if (syncing) { syncAgain = true; return { ok: false, busy: true }; }
+    syncing = true; setSyncStatus("Syncing…");
+    let result = { ok: false };
+    try {
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const snapshot = toFile(notes);
+        const force = load(FORCE_KEY, false);
+        const remote = await pull();
+        const merged = tidy(force ? authoritative(notes, remote.notes) : mergeNotes(notes, remote.notes));
+        const body = toFile(merged);
+        if (body !== toFile(remote.notes)) {
+          const r = await api("PUT", Object.assign(
+            { message: "Update notes", content: b64enc(body), branch: SYNC.branch },
+            remote.sha ? { sha: remote.sha } : {}));
+          if (r.status === 409 || r.status === 422) { if (attempt === 3) throw httpError(r.status); continue; }
+          if (!r.ok) throw httpError(r.status);
+        }
+        // Keep anything typed while we were talking to GitHub.
+        const after = mergeNotes(notes, merged);
+        notes = after; save(NOTES_KEY, notes); save(FORCE_KEY, false);
+        save(META_KEY, { at: Date.now() }); markBackedUp();
+        if (toFile(after) !== body) syncAgain = true;
+        if (body !== snapshot) rerender();
+        result = { ok: true };
+        setSyncStatus();
+        break;
+      }
+    } catch (e) {
+      result = { ok: false, status: e.status, offline: e instanceof TypeError };
+      setSyncStatus(explain(e), true);
+    } finally {
+      syncing = false;
+      if (syncAgain) { syncAgain = false; scheduleSync(); }
+    }
+    return result;
+  }
+  function scheduleSync() {
+    if (!token()) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(sync, 1500);
+  }
+
+  document.getElementById("sync-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const input = document.getElementById("token-input");
+    const t = input.value.trim(); if (!t) return;
+    save(TOKEN_KEY, t); input.value = "";
+    const r = await sync();
+    // A token GitHub refuses is useless: forget it so you can paste a new one.
+    if (!r.ok && !r.offline && !r.busy) { try { localStorage.removeItem(TOKEN_KEY); } catch {} setSyncStatus(document.getElementById("sync-status").textContent, true); }
+  });
+  document.getElementById("sync-now").addEventListener("click", () => sync());
+  document.getElementById("sync-off").addEventListener("click", () => {
+    if (!confirm("Stop syncing on this device? The notes already in the repo stay there.")) return;
+    try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(META_KEY); } catch {}
+    setSyncStatus();
+  });
+  window.addEventListener("online", () => sync());
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") sync(); });
+
   renderIdeas();
   updateSummary();
   updateNudge();
   loadApps();
+  setSyncStatus();
+  sync();
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
 </body>
