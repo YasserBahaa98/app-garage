@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>App Garage</title>
+<meta name="description" content="My apps, my app ideas and the to-dos for each app.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="App Garage">
+<meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16171a" media="(prefers-color-scheme: dark)">
+<style>
+  :root {
+    --bg: #f6f5f1; --card: #ffffff; --text: #1d1e21; --muted: #5d6068;
+    --line: #e2e0d9; --accent: #2f5bd3; --accent-text: #ffffff; --warn: #a1400b;
+    --soft: #eef1fb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16171a; --card: #212328; --text: #eceae4; --muted: #a3a6ae;
+      --line: #33363d; --accent: #7a9cff; --accent-text: #0e1120; --warn: #f0a46c;
+      --soft: #262b3a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 17px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: max(20px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
+  }
+  main { max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 28px; margin: 4px 0 12px; letter-spacing: -0.01em; }
+  button, input, textarea { font: inherit; color: inherit; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--line);
+    padding: 4px; border-radius: 12px; margin-bottom: 14px; }
+  .tabs button { border: 0; background: transparent; padding: 9px; border-radius: 9px; font-weight: 600;
+    color: var(--muted); min-height: 44px; }
+  .tabs button[aria-selected=true] { background: var(--card); color: var(--text); }
+  .sub { color: var(--muted); margin: 0 0 12px; font-size: 15px; }
+  input[type=search], .add input {
+    width: 100%; padding: 11px 14px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--card);
+  }
+  input[type=search] { margin-bottom: 14px; }
+  ul.cards { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  .card h2 { font-size: 19px; margin: 0 0 4px; }
+  .card > p { margin: 0 0 12px; color: var(--muted); font-size: 15px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  a.open, .btn {
+    display: inline-block; background: var(--accent); color: var(--accent-text); border: 0;
+    text-decoration: none; font-weight: 600; padding: 9px 18px; border-radius: 10px; min-height: 44px;
+    line-height: 26px; cursor: pointer;
+  }
+  .btn.ghost { background: var(--soft); color: var(--text); font-weight: 500; }
+  .url { display: block; font-size: 13px; color: var(--muted); margin-top: 8px; word-break: break-all; }
+  .note { color: var(--warn); font-size: 15px; }
+  .todos { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .add { display: flex; gap: 8px; margin-top: 8px; }
+  .add input { flex: 1; min-width: 0; }
+  .add .btn { padding: 9px 14px; }
+  ul.items { list-style: none; margin: 0; padding: 0; }
+  ul.items li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  ul.items li:last-child { border-bottom: 0; }
+  ul.items input[type=checkbox] { width: 22px; height: 22px; margin: 2px 0 0; flex: none; accent-color: var(--accent); }
+  ul.items .txt { flex: 1; word-break: break-word; white-space: pre-wrap; }
+  ul.items li.done .txt { text-decoration: line-through; color: var(--muted); }
+  ul.items .del { border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1;
+    padding: 2px 6px; min-width: 36px; min-height: 36px; cursor: pointer; }
+  .empty { color: var(--muted); font-size: 15px; margin: 4px 0; }
+  .backup { margin-top: 26px; padding: 16px; border-radius: 16px; background: var(--soft); font-size: 15px; }
+  .backup p { margin: 0 0 10px; color: var(--muted); }
+  .backup .btn.ghost { background: var(--card); border: 1px solid var(--line); }
+  footer { color: var(--muted); font-size: 13px; margin-top: 18px; text-align: center; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>App Garage</h1>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-apps" aria-selected="true">Apps</button>
+    <button role="tab" id="tab-ideas" aria-selected="false">Ideas</button>
+  </div>
+
+  <section id="view-apps">
+    <p class="sub" id="count">Loading…</p>
+    <input type="search" id="q" placeholder="Search apps" aria-label="Search apps">
+    <p class="note" id="note" hidden></p>
+    <ul class="cards" id="list"></ul>
+  </section>
+
+  <section id="view-ideas" hidden>
+    <p class="sub">New app ideas. Tick one when you've built it or dropped it.</p>
+    <form class="add" id="idea-form">
+      <input id="idea-input" placeholder="Write an idea…" aria-label="New idea" autocomplete="off">
+      <button class="btn" type="submit">Add</button>
+    </form>
+    <ul class="items" id="ideas" style="margin-top:10px"></ul>
+  </section>
+
+  <div class="backup">
+    <p>Ideas and to-dos are saved on this phone only. Make a backup now and then, and keep the file somewhere safe (Files, Drive, email).</p>
+    <div class="row">
+      <button class="btn ghost" id="backup">Back up notes</button>
+      <button class="btn ghost" id="restore">Restore from backup</button>
+      <input type="file" id="restore-file" accept=".json,application/json" hidden>
+    </div>
+    <p class="note" id="backup-msg" hidden style="margin:10px 0 0"></p>
+  </div>
+  <footer>Apps with GitHub Pages turned on appear here by themselves. Other apps go in <b>apps.txt</b>.</footer>
+</main>
+<script>
+  const GH_USER = "YasserBahaa98";
+  const SELF_REPO = "app-garage";
+  const NOTES_KEY = "app-garage-notes-v1";
+  const REPOS_KEY = "app-garage-repos-v1";
+
+  // ---------- storage (never crash if the browser blocks it) ----------
+  function load(key, fallback) {
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
+  }
+  function save(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch { return false; }
+  }
+  let notes = load(NOTES_KEY, { ideas: [], todos: {} });
+  if (!notes.ideas) notes.ideas = [];
+  if (!notes.todos) notes.todos = {};
+  function saveNotes() {
+    if (!save(NOTES_KEY, notes)) showBackupMsg("Could not save on this phone. Is private browsing on?");
+  }
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+  // ---------- apps.txt (manual apps and name/description overrides) ----------
+  function parseTxt(text) {
+    const apps = [], problems = [];
+    text.replace(/\r/g, "").split(/\n\s*\n/).forEach((block, i) => {
+      const app = {};
+      block.split("\n").forEach(line => {
+        if (/^\s*#/.test(line) || !line.trim()) return;
+        const m = line.match(/^\s*(name|link|about)\s*:\s*(.*)$/i);
+        if (m) app[m[1].toLowerCase()] = m[2].trim();
+      });
+      if (!app.name && !app.link && !app.about) return;
+      if (!app.name || !/^https?:\/\//i.test(app.link || "")) problems.push(app.name || app.link || ("block " + (i + 1)));
+      apps.push(app);
+    });
+    return { apps, problems };
+  }
+
+  // ---------- GitHub (apps found automatically) ----------
+  function prettyName(repo) {
+    return repo.replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  }
+  function key(link) {
+    return (link || "").trim().toLowerCase().replace(/\/+$/, "") + "/";
+  }
+  async function githubApps() {
+    try {
+      const r = await fetch(`https://api.github.com/users/${GH_USER}/repos?per_page=100&sort=pushed`,
+        { headers: { Accept: "application/vnd.github+json" } });
+      if (!r.ok) throw new Error(r.status);
+      const repos = await r.json();
+      const apps = repos
+        .filter(x => x.has_pages && !x.fork && !x.archived && x.name.toLowerCase() !== SELF_REPO)
+        .map(x => ({
+          name: prettyName(x.name),
+          link: x.homepage && /^https?:\/\//.test(x.homepage) ? x.homepage
+                : `https://${GH_USER.toLowerCase()}.github.io/${x.name}/`,
+          about: x.description || ""
+        }));
+      save(REPOS_KEY, apps);
+      return { apps, fresh: true };
+    } catch {
+      return { apps: load(REPOS_KEY, []), fresh: false };
+    }
+  }
+
+  // ---------- small helpers ----------
+  function el(tag, props = {}, ...kids) {
+    const n = document.createElement(tag);
+    Object.assign(n, props);
+    kids.forEach(k => n.append(k));
+    return n;
+  }
+  function newItem(text) {
+    return { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text, done: false, at: new Date().toISOString() };
+  }
+  // A list of items with a checkbox and a delete button. `getList` returns the live array.
+  function renderItems(ul, getList, onChange) {
+    ul.innerHTML = "";
+    const list = getList();
+    if (!list.length) { ul.append(el("li", { className: "empty", textContent: "Nothing yet." })); return; }
+    const sorted = [...list].sort((a, b) => (a.done - b.done) || (b.at > a.at ? 1 : -1));
+    sorted.forEach(item => {
+      const cb = el("input", { type: "checkbox", checked: item.done, ariaLabel: "Done" });
+      cb.addEventListener("change", () => { item.done = cb.checked; saveNotes(); onChange(); });
+      const del = el("button", { className: "del", textContent: "×", ariaLabel: "Delete", title: "Delete" });
+      del.addEventListener("click", () => {
+        if (!confirm("Delete this note?")) return;
+        const arr = getList(); arr.splice(arr.indexOf(item), 1); saveNotes(); onChange();
+      });
+      ul.append(el("li", { className: item.done ? "done" : "" }, cb, el("span", { className: "txt", textContent: item.text }), del));
+    });
+  }
+
+  // ---------- Apps view ----------
+  function renderApps(apps, problems, offline) {
+    const list = document.getElementById("list");
+    list.innerHTML = "";
+    apps.forEach(app => {
+      const k = key(app.link);
+      const card = el("li", { className: "card" });
+      card.dataset.search = ((app.name || "") + " " + (app.about || "")).toLowerCase();
+      card.append(el("h2", { textContent: app.name || "(no name)" }), el("p", { textContent: app.about || "" }));
+
+      const todoBtn = el("button", { className: "btn ghost", type: "button" });
+      const row = el("div", { className: "row" });
+      if (/^https?:\/\//i.test(app.link || "")) {
+        row.append(el("a", { className: "open", href: app.link, textContent: "Open", rel: "noopener" }));
+      }
+      row.append(todoBtn);
+      card.append(row);
+      if (/^https?:\/\//i.test(app.link || "")) card.append(el("span", { className: "url", textContent: app.link }));
+      else card.append(el("p", { className: "note", textContent: "No link yet. Add a line that starts with Link: https:// in apps.txt" }));
+
+      const box = el("div", { className: "todos", hidden: true });
+      const ul = el("ul", { className: "items" });
+      const form = el("form", { className: "add" });
+      const input = el("input", { placeholder: "Add a to-do for " + (app.name || "this app"), autocomplete: "off" });
+      input.setAttribute("aria-label", "New to-do");
+      form.append(input, el("button", { className: "btn", type: "submit", textContent: "Add" }));
+      box.append(ul, form);
+      card.append(box);
+
+      const getList = () => (notes.todos[k] = notes.todos[k] || []);
+      const refresh = () => {
+        const open = (notes.todos[k] || []).filter(t => !t.done).length;
+        todoBtn.textContent = box.hidden ? `To-dos (${open})` : "Hide to-dos";
+        renderItems(ul, getList, refresh);
+      };
+      todoBtn.addEventListener("click", () => { box.hidden = !box.hidden; refresh(); if (!box.hidden) input.focus(); });
+      form.addEventListener("submit", e => {
+        e.preventDefault();
+        const t = input.value.trim(); if (!t) return;
+        getList().push(newItem(t)); saveNotes(); input.value = ""; refresh();
+      });
+      refresh();
+      list.append(card);
+    });
+    document.getElementById("count").textContent =
+      apps.length + (apps.length === 1 ? " app" : " apps") + (offline ? " · offline, showing last saved list" : "");
+    const note = document.getElementById("note");
+    note.hidden = !problems.length;
+    if (problems.length) note.textContent = "Check apps.txt: " + problems.join(", ") + " is missing a Name or a Link that starts with https://";
+  }
+
+  async function loadApps() {
+    let txt = { apps: [], problems: [] }, txtOk = true;
+    try {
+      const r = await fetch("apps.txt", { cache: "no-cache" });
+      if (!r.ok) throw new Error(r.status);
+      txt = parseTxt(await r.text());
+    } catch { txtOk = false; }
+    const gh = await githubApps();
+    // apps.txt first (its names and descriptions win), then apps found on GitHub that it doesn't mention.
+    const seen = new Set(txt.apps.map(a => key(a.link)));
+    const auto = gh.apps.filter(a => !seen.has(key(a.link))).sort((a, b) => a.name.localeCompare(b.name));
+    const all = [...txt.apps, ...auto];
+    if (!all.length) {
+      document.getElementById("count").textContent = "Could not load the list. Check your internet connection and reload.";
+      return;
+    }
+    renderApps(all, txt.problems, !gh.fresh || !txtOk);
+  }
+
+  document.getElementById("q").addEventListener("input", e => {
+    const q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll("#list > li").forEach(li => { li.hidden = q && !li.dataset.search.includes(q); });
+  });
+
+  // ---------- Ideas view ----------
+  const ideasUl = document.getElementById("ideas");
+  const renderIdeas = () => renderItems(ideasUl, () => notes.ideas, renderIdeas);
+  document.getElementById("idea-form").addEventListener("submit", e => {
+    e.preventDefault();
+    const input = document.getElementById("idea-input");
+    const t = input.value.trim(); if (!t) return;
+    notes.ideas.push(newItem(t)); saveNotes(); input.value = ""; renderIdeas();
+  });
+
+  // ---------- tabs ----------
+  function show(tab) {
+    const apps = tab === "apps";
+    document.getElementById("view-apps").hidden = !apps;
+    document.getElementById("view-ideas").hidden = apps;
+    document.getElementById("tab-apps").setAttribute("aria-selected", apps);
+    document.getElementById("tab-ideas").setAttribute("aria-selected", !apps);
+    try { sessionStorage.setItem("tab", tab); } catch {}
+  }
+  document.getElementById("tab-apps").addEventListener("click", () => show("apps"));
+  document.getElementById("tab-ideas").addEventListener("click", () => show("ideas"));
+  try { if (sessionStorage.getItem("tab") === "ideas") show("ideas"); } catch {}
+
+  // ---------- backup / restore ----------
+  function showBackupMsg(t) { const m = document.getElementById("backup-msg"); m.hidden = false; m.textContent = t; }
+  document.getElementById("backup").addEventListener("click", async () => {
+    const day = new Date().toISOString().slice(0, 10);
+    const name = `app-garage-backup-${day}.json`;
+    const blob = new Blob([JSON.stringify({ app: "app-garage", saved: new Date().toISOString(), notes }, null, 2)], { type: "application/json" });
+    const file = new File([blob], name, { type: "application/json" });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: name });
+        showBackupMsg("Backup shared. Save it somewhere safe.");
+        return;
+      }
+    } catch (e) { if (e && e.name === "AbortError") return; }
+    const a = el("a", { href: URL.createObjectURL(blob), download: name });
+    document.body.append(a); a.click(); a.remove();
+    showBackupMsg("Backup saved as " + name + ".");
+  });
+  document.getElementById("restore").addEventListener("click", () => document.getElementById("restore-file").click());
+  document.getElementById("restore-file").addEventListener("change", async e => {
+    const f = e.target.files[0]; e.target.value = "";
+    if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      const n = data.notes || data;
+      if (!Array.isArray(n.ideas) || typeof n.todos !== "object") throw new Error("not a backup");
+      if (!confirm("Replace the ideas and to-dos on this phone with the ones in this backup?")) return;
+      notes = { ideas: n.ideas, todos: n.todos || {} };
+      saveNotes(); renderIdeas(); loadApps();
+      showBackupMsg("Restored from " + f.name + ".");
+    } catch { showBackupMsg("That file isn't an App Garage backup."); }
+  });
+
+  renderIdeas();
+  loadApps();
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>

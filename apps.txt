@@ -1,0 +1,24 @@
+# APP GARAGE - EXTRA APPS AND NICER NAMES
+#
+# You usually don't need to touch this file.
+# Any of your repos with GitHub Pages turned on shows up in App Garage by itself,
+# using the repo name and the "About" description from GitHub.
+#
+# Use this file only to:
+#  - add an app GitHub can't see (private repo, or hosted somewhere else), or
+#  - give an app a nicer name or description than the automatic one.
+#
+# One block per app: Name, Link, About. Leave an empty line between apps.
+# Lines starting with # are notes and are not shown.
+
+Name: Lucky's Dino Feast
+Link: https://yasserbahaa98.github.io/lucky-dino-feast/
+About: 3D game: fly Lucky the cockatoo around islands and feed the hungry baby dinosaurs. Works offline.
+
+Name: Night Line
+Link: https://yasserbahaa98.github.io/night-line/
+About: Tap-to-drive 3D train game for young kids: lights, speed signs and stations. Best on iPad, sideways.
+
+Name: Mirrors Karma
+Link: https://mirrors-karma.yasserb9898.workers.dev/
+About: Memory card game for 2 to 10 friends on their phones. Create a room and share the code. Needs internet.
