@@ -319,7 +319,7 @@
       const todoBtn = el("button", { className: "btn quiet", type: "button" });
       todoBtn.setAttribute("aria-expanded", "false");
       const actions = el("div", { className: "actions" });
-      if (hasLink) actions.append(el("a", { className: "open", href: app.link, textContent: "Open", rel: "noopener" }));
+      if (hasLink) actions.append(el("a", { className: "open", href: app.link, textContent: "Open", target: "_blank", rel: "noopener noreferrer" }));
       actions.append(todoBtn);
       bay.append(actions);
       if (!hasLink) bay.append(el("p", { className: "note", textContent: "No link yet. Add a line that starts with Link: https:// in apps.txt." }));
