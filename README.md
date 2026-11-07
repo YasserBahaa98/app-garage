@@ -39,17 +39,3 @@ These are saved **on your phone only**, not on GitHub, so they're private and wo
 That also means: if you delete the home-screen icon, clear browser data, or change phones, they're gone.
 Tap **Back up notes** now and then and keep the file somewhere safe. **Restore from backup** brings them back.
 App Garage shows a reminder bar when your notes have changed and the last backup is 14 days old or more.
-
-## iPhone Shortcuts (optional, iPhone and iPad only)
-
-A **Save with Shortcut** button appears at the bottom of the page on iPhone and iPad.
-It sends your notes to a shortcut named **Save Garage**, which writes them to one file in iCloud Drive
-(`app-garage-backup.json`, overwritten each time). A second shortcut, **Restore Garage**, reads that file and
-opens App Garage with the notes, which asks before replacing anything.
-
-The step-by-step setup is in the page itself, under "Set up the iPhone shortcuts".
-(To see those buttons on another device, add `?shortcuts=1` to the page address.)
-
-Things that depend on your phone and weren't tested here: whether iOS asks you to confirm each time a
-shortcut starts, and whether the restore opens in the home-screen app or in Safari. The home-screen app and
-Safari keep separate notes, so check the notes appear where you expect.
