@@ -489,7 +489,8 @@
     const file = new File([blob], name, { type: "application/json" });
     try {
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: name });
+        // Share only the file. Adding a title makes some apps and shortcuts receive a second "text" item.
+        await navigator.share({ files: [file] });
         markBackedUp();
         showBackupMsg("Backed up. Keep the file somewhere safe.");
         return;
