@@ -10,114 +10,171 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="App Garage">
-<meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#16171a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#e4e6e3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1c1f23" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
 <style>
+  /* Garage palette: concrete floor, asphalt, safety-yellow floor paint, steel blue. */
   :root {
-    --bg: #f6f5f1; --card: #ffffff; --text: #1d1e21; --muted: #5d6068;
-    --line: #e2e0d9; --accent: #2f5bd3; --accent-text: #ffffff; --warn: #a1400b;
-    --soft: #eef1fb;
+    --bg: #e4e6e3; --card: #f7f8f6; --text: #1f2326; --muted: #59616a;
+    --line: #cfd3cf; --steel: #2e4a66; --steel-text: #ffffff; --paint: #f5c518;
+    --paint-ink: #1f2326; --warn: #9a3d0c; --soft: #d9ddd9; --done: #8a9198;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #16171a; --card: #212328; --text: #eceae4; --muted: #a3a6ae;
-      --line: #33363d; --accent: #7a9cff; --accent-text: #0e1120; --warn: #f0a46c;
-      --soft: #262b3a;
+      --bg: #1c1f23; --card: #262a2f; --text: #eceeea; --muted: #a2a9b0;
+      --line: #363b42; --steel: #9db8d6; --steel-text: #13202d; --paint: #f5c518;
+      --paint-ink: #1c1f23; --warn: #f0a46c; --soft: #30353b; --done: #6d747b;
     }
   }
   * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0; background: var(--bg); color: var(--text);
-    font: 17px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    padding: max(20px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
+    font: 400 17px/1.45 "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-optical-sizing: auto;
+    padding: max(18px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
   }
   main { max-width: 560px; margin: 0 auto; }
-  h1 { font-size: 28px; margin: 4px 0 12px; letter-spacing: -0.01em; }
-  button, input, textarea { font: inherit; color: inherit; }
-  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--line);
-    padding: 4px; border-radius: 12px; margin-bottom: 14px; }
-  .tabs button { border: 0; background: transparent; padding: 9px; border-radius: 9px; font-weight: 600;
-    color: var(--muted); min-height: 44px; }
-  .tabs button[aria-selected=true] { background: var(--card); color: var(--text); }
-  .sub { color: var(--muted); margin: 0 0 12px; font-size: 15px; }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--paint); outline-offset: 2px; }
+
+  /* Header: the one loud element. Big title on a painted hazard stripe. */
+  header { margin: 6px 0 18px; }
+  h1 {
+    font-size: 46px; line-height: .95; font-weight: 800; letter-spacing: -0.035em;
+    font-variation-settings: "opsz" 96; margin: 0 0 12px;
+  }
+  .stripe {
+    height: 12px; border-radius: 3px;
+    background: repeating-linear-gradient(-45deg, var(--paint) 0 14px, var(--paint-ink) 14px 28px);
+  }
+  .summary { margin: 12px 0 0; color: var(--muted); font-size: 16px; }
+
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--soft);
+    padding: 4px; border-radius: 14px; margin-bottom: 16px; }
+  .tabs button { border: 0; background: transparent; padding: 9px; border-radius: 10px; font-weight: 600;
+    color: var(--muted); min-height: 44px; cursor: pointer; }
+  .tabs button[aria-selected=true] { background: var(--card); color: var(--text);
+    box-shadow: 0 1px 0 var(--line); }
+  .tabs .n { font-weight: 500; color: var(--muted); }
+
   input[type=search], .add input {
     width: 100%; padding: 11px 14px; border-radius: 12px;
     border: 1px solid var(--line); background: var(--card);
   }
+  input::placeholder { color: var(--muted); opacity: .8; }
   input[type=search] { margin-bottom: 14px; }
-  ul.cards { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
-  .card h2 { font-size: 19px; margin: 0 0 4px; }
-  .card > p { margin: 0 0 12px; color: var(--muted); font-size: 15px; }
-  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  a.open, .btn {
-    display: inline-block; background: var(--accent); color: var(--accent-text); border: 0;
-    text-decoration: none; font-weight: 600; padding: 9px 18px; border-radius: 10px; min-height: 44px;
-    line-height: 26px; cursor: pointer;
-  }
-  .btn.ghost { background: var(--soft); color: var(--text); font-weight: 500; }
-  .url { display: block; font-size: 13px; color: var(--muted); margin-top: 8px; word-break: break-all; }
   .note { color: var(--warn); font-size: 15px; }
-  .todos { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
-  .add { display: flex; gap: 8px; margin-top: 8px; }
+
+  /* App bays */
+  ul.bays { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .bay { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 16px; min-width: 0; }
+  .bay-head { display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 14px; align-items: start; }
+  .icon {
+    width: 60px; height: 60px; border-radius: 14px; overflow: hidden; display: grid; place-items: center;
+    background: var(--soft); font-weight: 800; font-size: 26px; color: var(--steel);
+    font-variation-settings: "opsz" 48;
+  }
+  .icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .bay h2 { font-size: 21px; line-height: 1.15; font-weight: 700; letter-spacing: -0.015em; margin: 2px 0 4px;
+    font-variation-settings: "opsz" 32; }
+  .bay p.about { margin: 0; color: var(--muted); font-size: 15px; }
+  .actions { display: flex; gap: 8px; margin-top: 14px; align-items: center; }
+  a.open, .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    background: var(--steel); color: var(--steel-text); border: 0; text-decoration: none;
+    font-weight: 600; padding: 0 20px; border-radius: 12px; min-height: 44px; cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn.quiet { background: var(--soft); color: var(--text); font-weight: 500; padding: 0 16px; }
+  .btn.quiet .count {
+    min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: inline-grid; place-items: center;
+    background: var(--paint); color: var(--paint-ink); font-size: 13px; font-weight: 700;
+  }
+
+  .todos { margin-top: 14px; padding-top: 4px; border-top: 2px dashed var(--line); }
+  .add { display: flex; gap: 8px; margin-top: 10px; }
   .add input { flex: 1; min-width: 0; }
-  .add .btn { padding: 9px 14px; }
+  .add .btn { padding: 0 16px; }
+
   ul.items { list-style: none; margin: 0; padding: 0; }
-  ul.items li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  ul.items li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line); }
   ul.items li:last-child { border-bottom: 0; }
-  ul.items input[type=checkbox] { width: 22px; height: 22px; margin: 2px 0 0; flex: none; accent-color: var(--accent); }
+  ul.items input[type=checkbox] { width: 22px; height: 22px; margin: 1px 0 0; flex: none; accent-color: var(--steel); cursor: pointer; }
   ul.items .txt { flex: 1; word-break: break-word; white-space: pre-wrap; }
-  ul.items li.done .txt { text-decoration: line-through; color: var(--muted); }
-  ul.items .del { border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1;
-    padding: 2px 6px; min-width: 36px; min-height: 36px; cursor: pointer; }
-  .empty { color: var(--muted); font-size: 15px; margin: 4px 0; }
-  .backup { margin-top: 26px; padding: 16px; border-radius: 16px; background: var(--soft); font-size: 15px; }
-  .backup p { margin: 0 0 10px; color: var(--muted); }
-  .backup .btn.ghost { background: var(--card); border: 1px solid var(--line); }
+  ul.items li.done .txt { text-decoration: line-through; color: var(--done); }
+  ul.items .del { border: 0; background: none; color: var(--muted); font-size: 22px; line-height: 1;
+    min-width: 40px; min-height: 36px; margin: -6px -8px 0 0; cursor: pointer; border-radius: 8px; }
+  ul.items li.empty { color: var(--muted); font-size: 15px; border: 0; padding: 10px 0 2px; }
+  ul.items li.fresh { animation: fresh 1.4s ease-out; }
+  @keyframes fresh { from { background: color-mix(in srgb, var(--paint) 45%, transparent); } to { background: transparent; } }
+
+  .ideas-card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 16px; }
+  .ideas-card .add { margin-top: 0; }
+  .lead { margin: 0 0 12px; color: var(--muted); font-size: 15px; }
+
+  .backup { margin-top: 28px; padding: 16px; border-radius: 16px; border: 2px dashed var(--line); font-size: 15px; }
+  .backup h3 { margin: 0 0 4px; font-size: 17px; font-weight: 700; }
+  .backup p { margin: 0 0 12px; color: var(--muted); }
+  .backup .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .backup .btn.quiet { background: var(--card); border: 1px solid var(--line); }
   footer { color: var(--muted); font-size: 13px; margin-top: 18px; text-align: center; }
   [hidden] { display: none !important; }
+  @media (prefers-reduced-motion: reduce) { ul.items li.fresh { animation: none; } }
 </style>
 </head>
 <body>
 <main>
-  <h1>App Garage</h1>
+  <header>
+    <h1>App Garage</h1>
+    <div class="stripe" aria-hidden="true"></div>
+    <p class="summary" id="summary">Loading your apps…</p>
+  </header>
+
   <div class="tabs" role="tablist">
     <button role="tab" id="tab-apps" aria-selected="true">Apps</button>
-    <button role="tab" id="tab-ideas" aria-selected="false">Ideas</button>
+    <button role="tab" id="tab-ideas" aria-selected="false">Ideas <span class="n" id="ideas-n"></span></button>
   </div>
 
   <section id="view-apps">
-    <p class="sub" id="count">Loading…</p>
-    <input type="search" id="q" placeholder="Search apps" aria-label="Search apps">
+    <input type="search" id="q" placeholder="Find an app" aria-label="Find an app">
     <p class="note" id="note" hidden></p>
-    <ul class="cards" id="list"></ul>
+    <ul class="bays" id="list"></ul>
   </section>
 
   <section id="view-ideas" hidden>
-    <p class="sub">New app ideas. Tick one when you've built it or dropped it.</p>
-    <form class="add" id="idea-form">
-      <input id="idea-input" placeholder="Write an idea…" aria-label="New idea" autocomplete="off">
-      <button class="btn" type="submit">Add</button>
-    </form>
-    <ul class="items" id="ideas" style="margin-top:10px"></ul>
+    <div class="ideas-card">
+      <p class="lead">New app ideas. Tick one off when you build it or drop it.</p>
+      <form class="add" id="idea-form">
+        <input id="idea-input" placeholder="I could make an app that…" aria-label="New idea" autocomplete="off">
+        <button class="btn" type="submit">Add</button>
+      </form>
+      <ul class="items" id="ideas" style="margin-top:6px"></ul>
+    </div>
   </section>
 
   <div class="backup">
-    <p>Ideas and to-dos are saved on this phone only. Make a backup now and then, and keep the file somewhere safe (Files, Drive, email).</p>
+    <h3>Your notes live on this phone</h3>
+    <p>Ideas and to-dos aren't stored anywhere else. Back them up now and then, and keep the file in Files, Drive or email.</p>
     <div class="row">
-      <button class="btn ghost" id="backup">Back up notes</button>
-      <button class="btn ghost" id="restore">Restore from backup</button>
+      <button class="btn quiet" id="backup">Back up notes</button>
+      <button class="btn quiet" id="restore">Restore from backup</button>
       <input type="file" id="restore-file" accept=".json,application/json" hidden>
     </div>
-    <p class="note" id="backup-msg" hidden style="margin:10px 0 0"></p>
+    <p class="note" id="backup-msg" hidden style="margin:12px 0 0"></p>
   </div>
-  <footer>Apps with GitHub Pages turned on appear here by themselves. Other apps go in <b>apps.txt</b>.</footer>
+  <footer>Repos with GitHub Pages turned on appear here by themselves. Other apps go in apps.txt.</footer>
 </main>
 <script>
   const GH_USER = "YasserBahaa98";
   const SELF_REPO = "app-garage";
   const NOTES_KEY = "app-garage-notes-v1";
   const REPOS_KEY = "app-garage-repos-v1";
+  // Usual icon file names for web apps, tried in order. "Icon:" in apps.txt overrides them.
+  const ICON_GUESSES = ["apple-touch-icon.png", "icon-192.png", "icon-180.png", "icons/icon-192.png", "favicon.png"];
 
   // ---------- storage (never crash if the browser blocks it) ----------
   function load(key, fallback) {
@@ -130,7 +187,8 @@
   if (!notes.ideas) notes.ideas = [];
   if (!notes.todos) notes.todos = {};
   function saveNotes() {
-    if (!save(NOTES_KEY, notes)) showBackupMsg("Could not save on this phone. Is private browsing on?");
+    if (!save(NOTES_KEY, notes)) showBackupMsg("Couldn't save on this phone. Turn off private browsing and try again.");
+    updateSummary();
   }
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
@@ -141,7 +199,7 @@
       const app = {};
       block.split("\n").forEach(line => {
         if (/^\s*#/.test(line) || !line.trim()) return;
-        const m = line.match(/^\s*(name|link|about)\s*:\s*(.*)$/i);
+        const m = line.match(/^\s*(name|link|about|icon)\s*:\s*(.*)$/i);
         if (m) app[m[1].toLowerCase()] = m[2].trim();
       });
       if (!app.name && !app.link && !app.about) return;
@@ -155,6 +213,7 @@
   function prettyName(repo) {
     return repo.replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
   }
+  // Two entries are the same app when their links match, ignoring capitals and the final "/".
   function key(link) {
     return (link || "").trim().toLowerCase().replace(/\/+$/, "") + "/";
   }
@@ -189,73 +248,119 @@
   function newItem(text) {
     return { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text, done: false, at: new Date().toISOString() };
   }
-  // A list of items with a checkbox and a delete button. `getList` returns the live array.
-  function renderItems(ul, getList, onChange) {
+  function openCount(list) { return (list || []).filter(t => !t.done).length; }
+
+  // App icon: try the app's own icon files; if none load, show its first letter.
+  function iconFor(app) {
+    const box = el("div", { className: "icon" });
+    box.setAttribute("aria-hidden", "true");
+    const letter = () => { box.textContent = (app.name || "?").trim().charAt(0).toUpperCase(); };
+    if (!/^https?:\/\//i.test(app.link || "")) { letter(); return box; }
+    const base = app.link.endsWith("/") ? app.link : app.link + "/";
+    const tries = (app.icon ? [app.icon] : []).concat(ICON_GUESSES);
+    let i = 0;
+    const img = el("img", { alt: "", decoding: "async" });
+    img.onerror = () => { i++; if (i < tries.length) img.src = new URL(tries[i], base).href; else letter(); };
+    img.src = new URL(tries[0], base).href;
+    box.append(img);
+    return box;
+  }
+
+  // A list of notes with a checkbox and a delete button. `getList` returns the live array.
+  function renderItems(ul, getList, onChange, emptyText, freshId) {
     ul.innerHTML = "";
     const list = getList();
-    if (!list.length) { ul.append(el("li", { className: "empty", textContent: "Nothing yet." })); return; }
+    if (!list.length) { ul.append(el("li", { className: "empty", textContent: emptyText })); return; }
     const sorted = [...list].sort((a, b) => (a.done - b.done) || (b.at > a.at ? 1 : -1));
     sorted.forEach(item => {
-      const cb = el("input", { type: "checkbox", checked: item.done, ariaLabel: "Done" });
+      const cb = el("input", { type: "checkbox", checked: item.done });
+      cb.setAttribute("aria-label", "Done: " + item.text);
       cb.addEventListener("change", () => { item.done = cb.checked; saveNotes(); onChange(); });
-      const del = el("button", { className: "del", textContent: "×", ariaLabel: "Delete", title: "Delete" });
+      const del = el("button", { className: "del", textContent: "×", title: "Delete" });
+      del.setAttribute("aria-label", "Delete: " + item.text);
       del.addEventListener("click", () => {
-        if (!confirm("Delete this note?")) return;
+        if (!confirm("Delete this note?\n\n" + item.text)) return;
         const arr = getList(); arr.splice(arr.indexOf(item), 1); saveNotes(); onChange();
       });
-      ul.append(el("li", { className: item.done ? "done" : "" }, cb, el("span", { className: "txt", textContent: item.text }), del));
+      const li = el("li", { className: (item.done ? "done" : "") + (item.id === freshId ? " fresh" : "") },
+        cb, el("span", { className: "txt", textContent: item.text }), del);
+      ul.append(li);
     });
   }
 
+  // ---------- summary line ----------
+  let appCount = 0, offlineNow = false;
+  function updateSummary() {
+    const todos = Object.values(notes.todos).reduce((n, l) => n + openCount(l), 0);
+    const ideas = openCount(notes.ideas);
+    const parts = [appCount + (appCount === 1 ? " app" : " apps")];
+    if (todos) parts.push(todos + (todos === 1 ? " to-do" : " to-dos") + " waiting");
+    let s = parts.join(", ") + ".";
+    if (offlineNow) s += " Offline, so this is the last saved list.";
+    if (appCount) document.getElementById("summary").textContent = s;
+    document.getElementById("ideas-n").textContent = ideas ? "(" + ideas + ")" : "";
+  }
+
   // ---------- Apps view ----------
-  function renderApps(apps, problems, offline) {
+  function renderApps(apps, problems) {
     const list = document.getElementById("list");
     list.innerHTML = "";
     apps.forEach(app => {
       const k = key(app.link);
-      const card = el("li", { className: "card" });
-      card.dataset.search = ((app.name || "") + " " + (app.about || "")).toLowerCase();
-      card.append(el("h2", { textContent: app.name || "(no name)" }), el("p", { textContent: app.about || "" }));
+      const hasLink = /^https?:\/\//i.test(app.link || "");
+      const bay = el("li", { className: "bay" });
+      bay.dataset.search = ((app.name || "") + " " + (app.about || "")).toLowerCase();
 
-      const todoBtn = el("button", { className: "btn ghost", type: "button" });
-      const row = el("div", { className: "row" });
-      if (/^https?:\/\//i.test(app.link || "")) {
-        row.append(el("a", { className: "open", href: app.link, textContent: "Open", rel: "noopener" }));
-      }
-      row.append(todoBtn);
-      card.append(row);
-      if (/^https?:\/\//i.test(app.link || "")) card.append(el("span", { className: "url", textContent: app.link }));
-      else card.append(el("p", { className: "note", textContent: "No link yet. Add a line that starts with Link: https:// in apps.txt" }));
+      bay.append(el("div", { className: "bay-head" },
+        iconFor(app),
+        el("div", {}, el("h2", { textContent: app.name || "(no name)" }),
+                      el("p", { className: "about", textContent: app.about || "" }))));
+
+      const todoBtn = el("button", { className: "btn quiet", type: "button" });
+      todoBtn.setAttribute("aria-expanded", "false");
+      const actions = el("div", { className: "actions" });
+      if (hasLink) actions.append(el("a", { className: "open", href: app.link, textContent: "Open", rel: "noopener" }));
+      actions.append(todoBtn);
+      bay.append(actions);
+      if (!hasLink) bay.append(el("p", { className: "note", textContent: "No link yet. Add a line that starts with Link: https:// in apps.txt." }));
 
       const box = el("div", { className: "todos", hidden: true });
       const ul = el("ul", { className: "items" });
       const form = el("form", { className: "add" });
-      const input = el("input", { placeholder: "Add a to-do for " + (app.name || "this app"), autocomplete: "off" });
-      input.setAttribute("aria-label", "New to-do");
+      const input = el("input", { placeholder: "Next thing to improve…", autocomplete: "off" });
+      input.setAttribute("aria-label", "New to-do for " + (app.name || "this app"));
       form.append(input, el("button", { className: "btn", type: "submit", textContent: "Add" }));
       box.append(ul, form);
-      card.append(box);
+      bay.append(box);
 
       const getList = () => (notes.todos[k] = notes.todos[k] || []);
-      const refresh = () => {
-        const open = (notes.todos[k] || []).filter(t => !t.done).length;
-        todoBtn.textContent = box.hidden ? `To-dos (${open})` : "Hide to-dos";
-        renderItems(ul, getList, refresh);
+      const refresh = (freshId) => {
+        const n = openCount(notes.todos[k]);
+        todoBtn.innerHTML = "";
+        todoBtn.append(box.hidden ? "To-dos" : "Close");
+        if (box.hidden && n) todoBtn.append(el("span", { className: "count", textContent: n }));
+        renderItems(ul, getList, refresh, "Nothing to improve yet. Add the first idea below.", freshId);
       };
-      todoBtn.addEventListener("click", () => { box.hidden = !box.hidden; refresh(); if (!box.hidden) input.focus(); });
+      todoBtn.addEventListener("click", () => {
+        box.hidden = !box.hidden;
+        todoBtn.setAttribute("aria-expanded", String(!box.hidden));
+        refresh();
+        if (!box.hidden) input.focus();
+      });
       form.addEventListener("submit", e => {
         e.preventDefault();
         const t = input.value.trim(); if (!t) return;
-        getList().push(newItem(t)); saveNotes(); input.value = ""; refresh();
+        const item = newItem(t);
+        getList().push(item); saveNotes(); input.value = ""; refresh(item.id);
       });
       refresh();
-      list.append(card);
+      list.append(bay);
     });
-    document.getElementById("count").textContent =
-      apps.length + (apps.length === 1 ? " app" : " apps") + (offline ? " · offline, showing last saved list" : "");
+    appCount = apps.length;
+    updateSummary();
     const note = document.getElementById("note");
     note.hidden = !problems.length;
-    if (problems.length) note.textContent = "Check apps.txt: " + problems.join(", ") + " is missing a Name or a Link that starts with https://";
+    if (problems.length) note.textContent = "Fix apps.txt: " + problems.join(", ") + " needs a Name and a Link that starts with https://";
   }
 
   async function loadApps() {
@@ -266,15 +371,16 @@
       txt = parseTxt(await r.text());
     } catch { txtOk = false; }
     const gh = await githubApps();
-    // apps.txt first (its names and descriptions win), then apps found on GitHub that it doesn't mention.
+    // apps.txt first (its names and descriptions win), then apps found on GitHub that it doesn't already list.
     const seen = new Set(txt.apps.map(a => key(a.link)));
     const auto = gh.apps.filter(a => !seen.has(key(a.link))).sort((a, b) => a.name.localeCompare(b.name));
     const all = [...txt.apps, ...auto];
+    offlineNow = !gh.fresh || !txtOk;
     if (!all.length) {
-      document.getElementById("count").textContent = "Could not load the list. Check your internet connection and reload.";
+      document.getElementById("summary").textContent = "Couldn't load your apps. Check the internet connection, then reopen.";
       return;
     }
-    renderApps(all, txt.problems, !gh.fresh || !txtOk);
+    renderApps(all, txt.problems);
   }
 
   document.getElementById("q").addEventListener("input", e => {
@@ -284,12 +390,14 @@
 
   // ---------- Ideas view ----------
   const ideasUl = document.getElementById("ideas");
-  const renderIdeas = () => renderItems(ideasUl, () => notes.ideas, renderIdeas);
+  const renderIdeas = (freshId) => renderItems(ideasUl, () => notes.ideas, renderIdeas,
+    "No ideas yet. Write the first one above.", freshId);
   document.getElementById("idea-form").addEventListener("submit", e => {
     e.preventDefault();
     const input = document.getElementById("idea-input");
     const t = input.value.trim(); if (!t) return;
-    notes.ideas.push(newItem(t)); saveNotes(); input.value = ""; renderIdeas();
+    const item = newItem(t);
+    notes.ideas.push(item); saveNotes(); input.value = ""; renderIdeas(item.id);
   });
 
   // ---------- tabs ----------
@@ -315,13 +423,13 @@
     try {
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: name });
-        showBackupMsg("Backup shared. Save it somewhere safe.");
+        showBackupMsg("Backed up. Keep the file somewhere safe.");
         return;
       }
     } catch (e) { if (e && e.name === "AbortError") return; }
     const a = el("a", { href: URL.createObjectURL(blob), download: name });
     document.body.append(a); a.click(); a.remove();
-    showBackupMsg("Backup saved as " + name + ".");
+    showBackupMsg("Backed up as " + name + ".");
   });
   document.getElementById("restore").addEventListener("click", () => document.getElementById("restore-file").click());
   document.getElementById("restore-file").addEventListener("change", async e => {
@@ -335,10 +443,11 @@
       notes = { ideas: n.ideas, todos: n.todos || {} };
       saveNotes(); renderIdeas(); loadApps();
       showBackupMsg("Restored from " + f.name + ".");
-    } catch { showBackupMsg("That file isn't an App Garage backup."); }
+    } catch { showBackupMsg("That file isn't an App Garage backup. Pick a file named app-garage-backup-….json."); }
   });
 
   renderIdeas();
+  updateSummary();
   loadApps();
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>

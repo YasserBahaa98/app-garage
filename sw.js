@@ -1,5 +1,6 @@
-// Keeps the list usable offline: always tries the network first, falls back to the last saved copy.
-const CACHE = "app-garage-v1";
+// Keeps App Garage usable offline: always tries the network first, falls back to the last saved copy.
+// Also keeps a copy of app icons and the font, so they still show without internet.
+const CACHE = "app-garage-v2";
 const FILES = ["./", "index.html", "apps.txt", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {
@@ -15,15 +16,22 @@ self.addEventListener("activate", e => {
 });
 
 self.addEventListener("fetch", e => {
-  const url = new URL(e.request.url);
-  if (e.request.method !== "GET" || url.origin !== location.origin) return;
+  const req = e.request;
+  if (req.method !== "GET") return;
+  const url = new URL(req.url);
+  const sameSite = url.origin === location.origin;
+  const isIconOrFont = req.destination === "image" || req.destination === "font" || req.destination === "style";
+  if (!sameSite && !isIconOrFont) return; // e.g. the GitHub list: the page handles that itself
   e.respondWith(
-    fetch(e.request)
+    fetch(req)
       .then(res => {
-        const copy = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, copy));
+        // Keep good answers (and cross-site images, which browsers hide the status of).
+        if (res.ok || res.type === "opaque") {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(req, copy));
+        }
         return res;
       })
-      .catch(() => caches.match(e.request, { ignoreSearch: true }))
+      .catch(() => caches.match(req, { ignoreSearch: sameSite }))
   );
 });

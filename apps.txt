@@ -9,6 +9,7 @@
 #  - give an app a nicer name or description than the automatic one.
 #
 # One block per app: Name, Link, About. Leave an empty line between apps.
+# Optional 4th line, if an app's picture doesn't show: Icon: https://link-to-its-icon.png
 # Lines starting with # are notes and are not shown.
 
 Name: Lucky's Dino Feast
