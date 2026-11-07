@@ -116,6 +116,11 @@
   .ideas-card .add { margin-top: 0; }
   .lead { margin: 0 0 12px; color: var(--muted); font-size: 15px; }
 
+  .nudge { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+    background: color-mix(in srgb, var(--paint) 28%, var(--card)); border: 1px solid var(--paint);
+    border-radius: 16px; padding: 12px 14px; margin-bottom: 14px; font-size: 15px; }
+  .nudge .btn { min-height: 40px; padding: 0 16px; }
+  .backup .when { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
   .backup { margin-top: 28px; padding: 16px; border-radius: 16px; border: 2px dashed var(--line); font-size: 15px; }
   .backup h3 { margin: 0 0 4px; font-size: 17px; font-weight: 700; }
   .backup p { margin: 0 0 12px; color: var(--muted); }
@@ -139,6 +144,11 @@
     <button role="tab" id="tab-ideas" aria-selected="false">Ideas <span class="n" id="ideas-n"></span></button>
   </div>
 
+  <div class="nudge" id="nudge" hidden>
+    <span id="nudge-text"></span>
+    <button class="btn" id="nudge-btn" type="button">Back up now</button>
+  </div>
+
   <section id="view-apps">
     <input type="search" id="q" placeholder="Find an app" aria-label="Find an app">
     <p class="note" id="note" hidden></p>
@@ -159,6 +169,7 @@
   <div class="backup">
     <h3>Your notes live on this phone</h3>
     <p>Ideas and to-dos aren't stored anywhere else. Back them up now and then, and keep the file in Files, Drive or email.</p>
+    <p class="when" id="when"></p>
     <div class="row">
       <button class="btn quiet" id="backup">Back up notes</button>
       <button class="btn quiet" id="restore">Restore from backup</button>
@@ -186,9 +197,37 @@
   let notes = load(NOTES_KEY, { ideas: [], todos: {} });
   if (!notes.ideas) notes.ideas = [];
   if (!notes.todos) notes.todos = {};
+  // Backup reminder: remember when notes last changed and when they were last backed up.
+  const BACKUP_KEY = "app-garage-last-backup";
+  const CHANGE_KEY = "app-garage-last-change";
+  const REMIND_AFTER_DAYS = 14;
   function saveNotes() {
+    save(CHANGE_KEY, Date.now());
     if (!save(NOTES_KEY, notes)) showBackupMsg("Couldn't save on this phone. Turn off private browsing and try again.");
     updateSummary();
+    updateNudge();
+  }
+  function markBackedUp() { save(BACKUP_KEY, Date.now()); updateNudge(); }
+  function daysAgo(ts) { return Math.floor((Date.now() - ts) / 86400000); }
+  function noteCount() {
+    return notes.ideas.length + Object.values(notes.todos).reduce((n, l) => n + l.length, 0);
+  }
+  function updateNudge() {
+    const lastBackup = load(BACKUP_KEY, 0), lastChange = load(CHANGE_KEY, 0);
+    const when = document.getElementById("when"), nudge = document.getElementById("nudge");
+    if (!when || !nudge) return;
+    when.textContent = lastBackup
+      ? "Last backup: " + (daysAgo(lastBackup) === 0 ? "today" : daysAgo(lastBackup) === 1 ? "yesterday" : daysAgo(lastBackup) + " days ago") + "."
+      : "You haven't backed up yet.";
+    // Nudge only when there is something unsaved to protect, and it has gone unsaved for a while.
+    const unsaved = noteCount() > 0 && lastChange > lastBackup;
+    const waited = lastBackup ? daysAgo(lastBackup) >= REMIND_AFTER_DAYS : daysAgo(lastChange || Date.now()) >= 1;
+    nudge.hidden = !(unsaved && waited);
+    if (!nudge.hidden) {
+      document.getElementById("nudge-text").textContent = lastBackup
+        ? "Your notes changed and the last backup is " + daysAgo(lastBackup) + " days old."
+        : "Your notes aren't backed up yet.";
+    }
   }
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
@@ -415,6 +454,7 @@
 
   // ---------- backup / restore ----------
   function showBackupMsg(t) { const m = document.getElementById("backup-msg"); m.hidden = false; m.textContent = t; }
+  document.getElementById("nudge-btn").addEventListener("click", () => document.getElementById("backup").click());
   document.getElementById("backup").addEventListener("click", async () => {
     const day = new Date().toISOString().slice(0, 10);
     const name = `app-garage-backup-${day}.json`;
@@ -423,12 +463,14 @@
     try {
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: name });
+        markBackedUp();
         showBackupMsg("Backed up. Keep the file somewhere safe.");
         return;
       }
     } catch (e) { if (e && e.name === "AbortError") return; }
     const a = el("a", { href: URL.createObjectURL(blob), download: name });
     document.body.append(a); a.click(); a.remove();
+    markBackedUp();
     showBackupMsg("Backed up as " + name + ".");
   });
   document.getElementById("restore").addEventListener("click", () => document.getElementById("restore-file").click());
@@ -441,13 +483,14 @@
       if (!Array.isArray(n.ideas) || typeof n.todos !== "object") throw new Error("not a backup");
       if (!confirm("Replace the ideas and to-dos on this phone with the ones in this backup?")) return;
       notes = { ideas: n.ideas, todos: n.todos || {} };
-      saveNotes(); renderIdeas(); loadApps();
+      saveNotes(); markBackedUp(); renderIdeas(); loadApps();
       showBackupMsg("Restored from " + f.name + ".");
     } catch { showBackupMsg("That file isn't an App Garage backup. Pick a file named app-garage-backup-….json."); }
   });
 
   renderIdeas();
   updateSummary();
+  updateNudge();
   loadApps();
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
