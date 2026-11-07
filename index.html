@@ -120,6 +120,12 @@
     background: color-mix(in srgb, var(--paint) 28%, var(--card)); border: 1px solid var(--paint);
     border-radius: 16px; padding: 12px 14px; margin-bottom: 14px; font-size: 15px; }
   .nudge .btn { min-height: 40px; padding: 0 16px; }
+  .shortcut-box { margin-top: 14px; padding-top: 14px; border-top: 2px dashed var(--line); }
+  .shortcut-box details { margin-top: 12px; }
+  .shortcut-box summary { cursor: pointer; font-weight: 600; min-height: 32px; }
+  .shortcut-box p { margin: 10px 0 4px; color: var(--text); }
+  .shortcut-box ol { margin: 0; padding-left: 22px; color: var(--muted); }
+  .shortcut-box li { margin: 4px 0; }
   .backup .when { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
   .backup { margin-top: 28px; padding: 16px; border-radius: 16px; border: 2px dashed var(--line); font-size: 15px; }
   .backup h3 { margin: 0 0 4px; font-size: 17px; font-weight: 700; }
@@ -176,6 +182,27 @@
       <input type="file" id="restore-file" accept=".json,application/json" hidden>
     </div>
     <p class="note" id="backup-msg" hidden style="margin:12px 0 0"></p>
+    <div id="shortcut-box" class="shortcut-box" hidden>
+      <div class="row"><button class="btn quiet" id="shortcut-save" type="button">Save with Shortcut</button></div>
+      <details>
+        <summary>Set up the iPhone shortcuts</summary>
+        <p><b>1. Save Garage</b> (the button above runs this one)</p>
+        <ol>
+          <li>Open Shortcuts, tap + and name it exactly <b>Save Garage</b>.</li>
+          <li>Add <b>Set Name</b>: set the name of <i>Shortcut Input</i> to <b>app-garage-backup.json</b>.</li>
+          <li>Add <b>Save File</b>: pick a folder in iCloud Drive, turn off <i>Ask Where to Save</i>, turn on <i>Overwrite If File Exists</i>.</li>
+        </ol>
+        <p><b>2. Restore Garage</b> (run it from Shortcuts or your home screen)</p>
+        <ol>
+          <li>New shortcut named <b>Restore Garage</b>.</li>
+          <li>Add <b>Get File</b>: pick that same <b>app-garage-backup.json</b>.</li>
+          <li>Add <b>Get Text from Input</b>, then <b>URL Encode</b>.</li>
+          <li>Add <b>Text</b> with <b>https://yasserbahaa98.github.io/app-garage/#restore=</b> followed by the URL Encode result.</li>
+          <li>Add <b>Open URLs</b>.</li>
+        </ol>
+        <p>Action names can differ slightly between iOS versions. App Garage always asks before it replaces your notes.</p>
+      </details>
+    </div>
   </div>
   <footer>Repos with GitHub Pages turned on appear here by themselves. Other apps go in apps.txt.</footer>
 </main>
@@ -474,24 +501,70 @@
     showBackupMsg("Backed up as " + name + ".");
   });
   document.getElementById("restore").addEventListener("click", () => document.getElementById("restore-file").click());
+  // Replace the notes with a backup. Returns true if it was applied.
+  function applyBackup(data, sourceName) {
+    const n = data && (data.notes || data);
+    if (!n || !Array.isArray(n.ideas) || !n.todos || typeof n.todos !== "object") throw new Error("not a backup");
+    const count = n.ideas.length + Object.values(n.todos).reduce((s, l) => s + (Array.isArray(l) ? l.length : 0), 0);
+    if (!confirm("Replace the ideas and to-dos on this phone with the ones in this backup (" + count + " notes)?")) return false;
+    notes = { ideas: n.ideas, todos: n.todos };
+    saveNotes(); markBackedUp(); renderIdeas(); loadApps();
+    showBackupMsg("Restored from " + sourceName + ".");
+    return true;
+  }
   document.getElementById("restore-file").addEventListener("change", async e => {
     const f = e.target.files[0]; e.target.value = "";
     if (!f) return;
-    try {
-      const data = JSON.parse(await f.text());
-      const n = data.notes || data;
-      if (!Array.isArray(n.ideas) || typeof n.todos !== "object") throw new Error("not a backup");
-      if (!confirm("Replace the ideas and to-dos on this phone with the ones in this backup?")) return;
-      notes = { ideas: n.ideas, todos: n.todos || {} };
-      saveNotes(); markBackedUp(); renderIdeas(); loadApps();
-      showBackupMsg("Restored from " + f.name + ".");
-    } catch { showBackupMsg("That file isn't an App Garage backup. Pick a file named app-garage-backup-….json."); }
+    try { applyBackup(JSON.parse(await f.text()), f.name); }
+    catch { showBackupMsg("That file isn't an App Garage backup. Pick a file named app-garage-backup-….json."); }
   });
+
+  // ---------- iPhone Shortcuts (optional) ----------
+  // Save: this page hands the notes to a shortcut called "Save Garage", which writes them to a file.
+  // Restore: a shortcut called "Restore Garage" reads that file and opens this page with #restore=<notes>.
+  const SAVE_SHORTCUT = "Save Garage";
+  const MAX_LINK = 60000; // Safety limit for the link size. Not verified against iOS; the page warns if exceeded.
+  function pageUrl() { return location.origin + location.pathname; }
+  function buildSaveUrl() {
+    const payload = JSON.stringify({ app: "app-garage", saved: new Date().toISOString(), notes });
+    return "shortcuts://x-callback-url/run-shortcut?name=" + encodeURIComponent(SAVE_SHORTCUT) +
+      "&input=text&text=" + encodeURIComponent(payload) +
+      "&x-success=" + encodeURIComponent(pageUrl() + "#saved") +
+      "&x-error=" + encodeURIComponent(pageUrl() + "#savefailed");
+  }
+  document.getElementById("shortcut-save").addEventListener("click", () => {
+    const url = buildSaveUrl();
+    if (url.length > MAX_LINK) {
+      showBackupMsg("Your notes are too big to send to a shortcut. Use Back up notes instead.");
+      return;
+    }
+    showBackupMsg("Sending to the “" + SAVE_SHORTCUT + "” shortcut…");
+    location.href = url;
+  });
+  // Runs on open and whenever the part after # changes.
+  function handleHash() {
+    const h = location.hash;
+    if (!h || h === "#") return;
+    const clear = () => history.replaceState(null, "", pageUrl() + location.search);
+    if (h === "#saved") { clear(); markBackedUp(); showBackupMsg("Saved by your shortcut."); return; }
+    if (h === "#savefailed") { clear(); showBackupMsg("The shortcut didn't save. Check it's named “" + SAVE_SHORTCUT + "”, then try again."); return; }
+    if (h.startsWith("#restore=")) {
+      const raw = h.slice("#restore=".length);
+      clear();
+      try { applyBackup(JSON.parse(decodeURIComponent(raw)), "your shortcut"); }
+      catch { showBackupMsg("The shortcut sent something that isn't an App Garage backup. Nothing was changed."); }
+    }
+  }
+  window.addEventListener("hashchange", handleHash);
+  // The shortcut buttons only show on iPhone and iPad. Add ?shortcuts=1 to the address to show them anywhere.
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isIOS || /[?&]shortcuts=1/.test(location.search)) document.getElementById("shortcut-box").hidden = false;
 
   renderIdeas();
   updateSummary();
   updateNudge();
   loadApps();
+  handleHash();
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
 </body>
